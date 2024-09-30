@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>Alternative Fuel Stations</title>
+
+    <link rel="stylesheet" href="https://js.arcgis.com/4.21/esri/themes/light/main.css">
+    <script src="https://js.arcgis.com/4.21/"></script>
+
+    <style>
+        html, body, #viewDiv {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+
+    <script>
+        require([
+            "esri/Map",
+            "esri/views/MapView",
+            "esri/layers/FeatureLayer",
+            "esri/widgets/Legend"
+        ], function (Map, MapView, FeatureLayer, Legend) {
+
+            // Prompt user for state
+            const stateInput = prompt("Enter the state abbreviation (e.g., 'CA' for California):");
+            if (!stateInput || stateInput.length !== 2) {
+                alert("Please enter a valid two-letter state abbreviation.");
+                return;
+            }
+
+            // Step 1: Create the map
+            const map = new Map({
+                basemap: "streets-navigation-vector"
+            });
+
+            // Step 2: Create the MapView
+            const view = new MapView({
+                container: "viewDiv",
+                map: map,
+                center: [-98.5795, 39.8283], 
+                zoom: 4
+            });
+
+            // Step 3: Define the renderer with PictureMarkerSymbol
+            const fuelRenderer = {
+                type: "unique-value",
+                field: "Fuel_Type",
+                uniqueValueInfos: [
+                    {
+                        value: "ELEC",
+                        symbol: {
+                            type: "picture-marker",
+                            url: "images/electric.png", 
+                            width: "24px",
+                            height: "24px"
+                        },
+                        label: "Electric"
+                    },
+                    {
+                        value: "LPG",
+                        symbol: {
+                            type: "picture-marker",
+                            url: "images/Propane.png",
+                            width: "24px",
+                            height: "24px"
+                        },
+                        label: "Propane (LPG)"
+                    },
+                    {
+                        value: "BD", 
+                        symbol: {
+                            type: "picture-marker",
+                            url: "images/biodiesel.png",
+                            width: "24px",
+                            height: "24px"
+                        },
+                        label: "Biodiesel"
+                    },
+                    {
+                        value: "CNG",
+                        symbol: {
+                            type: "picture-marker",
+                            url: "images/CNG.png",
+                            width: "24px",
+                            height: "24px"
+                        },
+                        label: "Compressed Natural Gas (CNG)"
+                    },
+                    {
+                        value: "Hydrogen", 
+                        symbol: {
+                            type: "picture-marker",
+                            url: "images/hydrogen.png",
+                            width: "24px",
+                            height: "24px"
+                        },
+                        label: "Hydrogen"
+                    },
+                    {
+                        value: "Liquefied Natural Gas (LNG)",
+                        symbol: {
+                            type: "picture-marker",
+                            url: "images/LNG.png",
+                            width: "24px",
+                            height: "24px"
+                        },
+                        label: "Liquefied Natural Gas (LNG)"
+                    },
+                    {
+                        value: "E85", 
+                        symbol: {
+                            type: "picture-marker",
+                            url: "images/ethanol.png",
+                            width: "24px",
+                            height: "24px"
+                        },
+                        label: "Ethanol (E85)"
+                    }
+                ]
+            };
+
+            // Step 4: Define the FeatureLayer for Alternative Fuel Stations
+            const fuelStationsLayer = new FeatureLayer({
+                url: "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Alternate_Fuel/FeatureServer/0", 
+                renderer: fuelRenderer,
+                popupTemplate: {
+                    title: "Fuel Station",
+                    content: `<b>Fuel Type:</b> {Fuel_Type}<br>
+                              <b>Station Name:</b> {Station_Name}<br>
+                              <b>Address:</b> {Address}`
+                },
+                outFields: ["Fuel_Type", "Station_Name", "Address"],
+                definitionExpression: `State = '${stateInput.toUpperCase()}' AND Country = 'US'` // Filter for user-provided state and country
+            });
+
+            // Step 5: Add the layer to the map and adjust the view
+            map.add(fuelStationsLayer);
+
+            // Wait for the layer to load and then zoom to the features in the state
+            fuelStationsLayer.when(() => {
+                fuelStationsLayer.queryExtent({
+                    where: `State = '${stateInput.toUpperCase()}' AND Country = 'US'`
+                }).then((result) => {
+                    if (result.extent) {
+                        view.goTo(result.extent.expand(1.5));
+                    } else {
+                        alert("No stations found for the specified state.");
+                    }
+                });
+            });
+
+            // Step 6: Add the Legend widget
+            const legend = new Legend({
+                view: view,
+                layerInfos: [{
+                    layer: fuelStationsLayer,
+                    title: "Alternative Fuel Stations"
+                }]
+            });
+
+            // Step 7: Position the legend widget
+            view.ui.add(legend, "bottom-right");
+        });
+    </script>
+
+</head>
+
+<body>
+    <div id="viewDiv"></div>
+	
+	<!--Map div -->
+	<div id="reflectionDiv">
+		<h2>Reflections</h2>
+		<p>For the Lesson 7 assignment, I chose to work on the alternative fuel station map project. My goal was to create an interactive
+		web map displaying various types of alternative fuel stations across the United States. The map used the ArcGIS JavaScript API to
+		integrate a FeatureLayer containing station data and represented numerous fuel types using easily discernable icons for the types 
+		of fuel. Additionally, the map includes a state-based filter that zoomed to the selected state, offering a focused view of the stations.</p>
+		<p>During the process, several challenges arose, starting with the integration of custom icons to represent different fuel types. 
+		After reloading the map multiple times only to find the icons weren’t appearing in the map, I did some trouble shooting and reverted
+		to a simple marker for the fuel stations. When the only marker that would come through on the map was the “other” category I knew the 
+		values didn’t match the Fuel_Type field. Using the browser console's debugging tools helped identify these mismatches, allowing for 
+		necessary updates to the renderer definitions to ensure that the symbols were displayed correctly.</p>
+		<p>My original strategy of using my personal website on Infinityfree to host the image files wouldn’t work due to CORS (Cross-Origin Resource Sharing)
+		policy errors prevented the icons from loading correctly. To overcome this issue, I decided to host the icons locally within the GitHub repository. 
+		This adjustment was successful, but only after exploring and addressing multiple potential problems, including path references and file accessibility.</p>
+		<p>Reflecting on the experience, several valuable lessons were learned. First, proper file hosting and referencing are crucial, especially when dealing
+		with web-based resources. Using GitHub Pages for hosting offered an accessible way to serve both the HTML file and image resources, avoiding the CORS 
+		policy restrictions encountered earlier. Additionally, this project underscored the importance of using debugging tools to quickly identify and resolve
+		data-related issues.</p>
+		<p>In future projects, the experience gained here can be applied in several ways. When working with web maps, ensuring that all external resources are 
+		correctly hosted and referenced is key to smooth functionality. Also, the hands-on practice with the ArcGIS JavaScript API and troubleshooting techniques
+		will be directly applicable to similar web mapping projects. Overall, this project was a valuable exercise in problem-solving, technical implementation, 
+		and resource management, which will undoubtedly help future GIS and web development tasks.</p>
+	</div>	
+</body>
+</html>
